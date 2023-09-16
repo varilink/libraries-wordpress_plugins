@@ -7,43 +7,45 @@
  * Author URI: https://www.varilink.co.uk
  */
 
-// Protect from being called outside of WordPress
+// Protect this plugin from being called outside of WordPress
+
 defined( 'ABSPATH' ) or die( 'Access Denied' );
 
-function varilink_mailchimp_information_about_a_list_member(
-  $api_key, $api_root, $list_id, $email, $fields
+// This plugin provides a list of functions that provide access to the Mailchimp
+// marketing API, see the API reference here:
+// https://mailchimp.com/developer/marketing/api/
+//
+// Each function below corresponds to one of the API resources listed in that
+// reference. The name of the corresponding API resource is given in a comment
+// above the start of the function definition.
+
+// Get member info
+
+function varilink_mailchimp_get_member_info(
+  $api_key, $api_root, $list_id, $parms
 ) {
 
-  if ( function_exists( 'varilink_write_log' ) ) {
-    varilink_write_log(
-      'function varilink_mailchimp_information_about_a_list_member called'
-    );
-  }
-
-  $subscriber_hash = md5( strtolower( $email ) );
+  $subscriber_hash = md5( strtolower( $parms[ 'email_address' ] ) );
+  unset( $parms[ 'email_address' ] );
+  $curlopt_url = "https://$api_root/lists/$list_id/members/$subscriber_hash";
+  $query = http_build_query( $parms );
+  if ( $query ) { $curlopt_url .= "?$query"; }
 
   $ch = curl_init();
-  curl_setopt(
-    $ch,
-    CURLOPT_URL,
-    "https://$api_root/lists/$list_id/members/$subscriber_hash?fields=$fields"
-  );
+  curl_setopt( $ch, CURLOPT_URL, $curlopt_url );
   curl_setopt( $ch, CURLOPT_RETURNTRANSFER, TRUE );
   curl_setopt( $ch, CURLOPT_USERPWD, "anystring:$api_key");
   $body = curl_exec( $ch );
   $rc = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
-  if ( $rc === 200 ) {
-    $response = json_decode( $body );
-  } else {
-    $response = FALSE;
-  }
   curl_close( $ch );
 
-  return $response;
+  return [ 'rc' => $rc, 'body' => json_decode( $body, TRUE ) ];
 
 }
 
-function varilink_mailchimp_add_or_update_list_member(
+// Add or update list member
+
+function varilink_mailchimp_add_or_update_list_member (
   $api_key, $api_root, $list_id, $request
 ) {
 
@@ -55,7 +57,7 @@ function varilink_mailchimp_add_or_update_list_member(
     CURLOPT_URL,
     "https://$api_root/lists/$list_id/members/$subscriber_hash"
   );
-  curl_setopt( $ch, CURLOPT_CUSTOMREQUEST , 'PUT' );
+  curl_setopt( $ch, CURLOPT_CUSTOMREQUEST, 'PUT' );
   curl_setopt( $ch, CURLOPT_RETURNTRANSFER, TRUE );
   curl_setopt( $ch, CURLOPT_USERPWD, "anystring:$api_key");
   $json = json_encode( $request );
@@ -67,9 +69,8 @@ function varilink_mailchimp_add_or_update_list_member(
   );
   $body = curl_exec( $ch );
   $rc = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
-  $response = json_decode( $body );
   curl_close( $ch );
 
-  return $response;
+  return [ 'rc' => $rc, 'body' => json_decode( $body, TRUE ) ];
 
 }
