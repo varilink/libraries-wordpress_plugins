@@ -1,7 +1,7 @@
 <?php
-/*
+/**
  * Plugin Name: Varilink Forms
- * Description: Provides various form related tags as shortcodes.
+ * Description: Provides various form related tags as WordPress shortcodes.
  */
 
 function vari_form_tag ($atts) {
@@ -36,17 +36,26 @@ add_action('init', function () {
 
 function vari_input_tag ($atts) {
 
+    // Output an input tag/
+
+    // Valid shortcode attributes and their default values.
     $atts = shortcode_atts([
         'id' => NULL,
         'name' => NULL,
         'type' => 'text',
         'class' => NULL,
-        'placeholder' => NULL
+        'placeholder' => NULL,
+        'value' => NULL,
+        'checked' => NULL, # used only when type is radio or checkbox
+        'last' => NULL     # used only when type is radio
     ], $atts);
 
     $input_tag = '<input';
 
-    foreach ( [ 'id', 'name', 'type', 'placeholder' ] as $var ) {
+    foreach ( [ 'id', 'name', 'type', 'placeholder', 'value' ] as $var ) {
+
+        // Note the omission of the class attribute. This is so that we can
+        // merge classes set by validation with the initial tag classes.
 
         if ( isset( $atts[$var] ) ) {
             $$var = $atts[$var];
@@ -55,19 +64,40 @@ function vari_input_tag ($atts) {
 
     }
 
-    $class_attr_written = FALSE;
+    $class_attr_written = FALSE; // We have not yet written a class attribute.
 
     if ( $atts['name'] ) {
+
+        // The input tag is named so look for values passed via the session.
 
         $name = $atts['name'];
 
         if ( session_status() === PHP_SESSION_ACTIVE ) {
 
             if ( array_key_exists( $name, $_SESSION ) ) {
-                $input_tag .= " value=\"{$_SESSION[$name]}\"";
-                if ( $atts[ 'type' ] != 'hidden' ) {
+
+                // There is a session variable with the same name as this input
+                // tag, use its value as the value for this input field.
+
+                if (
+                    $atts['type'] === 'radio' &&
+                    $atts['value'] === $_SESSION[$name]
+                ) {
+                    $input_tag .= ' checked';
+                    if ( isset( $atts['last'] ) ) {
+                        unset( $_SESSION[ $name ] );
+                    }
+                } else {
+                    $input_tag .= " value=\"{$_SESSION[$name]}\"";
                     unset( $_SESSION[ $name ] );
                 }
+
+            } else {
+
+                if ( $atts['type'] === 'radio' && isset( $atts['checked'] ) ) {
+                    $input_tag .= ' checked';
+                }
+
             }
 
             if ( array_key_exists( "{$name}_class", $_SESSION ) ) {
