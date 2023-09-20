@@ -83,7 +83,7 @@ function varilink_paypal_create_order (
 
 }
 
-function varilink_verify_webhook_signature (
+function varilink_paypal_verify_webhook_signature (
   $api_domain , $access_token , $headers , $notification , $webhook_id
 ) {
 
