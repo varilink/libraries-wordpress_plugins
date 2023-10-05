@@ -19,16 +19,18 @@ defined( 'ABSPATH' ) or die( 'Access Denied' );
 // reference. The name of the corresponding API resource is given in a comment
 // above the start of the function definition.
 
-// Get member info
-
 function varilink_mailchimp_get_member_info(
-  $api_key, $api_root, $list_id, $parms
+  $api_key, $api_root, $list_id, $email_address, $query_parms
 ) {
 
-  $subscriber_hash = md5( strtolower( $parms[ 'email_address' ] ) );
-  unset( $parms[ 'email_address' ] );
+  // This function integrates with the Mailchimp "Get member info" API.
+
+  // Convert email address to a subscriber hash and set the URL path.
+  $subscriber_hash = md5( strtolower( $email_address ) );
   $curlopt_url = "https://$api_root/lists/$list_id/members/$subscriber_hash";
-  $query = http_build_query( $parms );
+
+  // Build the query string from the array of query parms
+  $query = http_build_query( $query_parms );
   if ( $query ) { $curlopt_url .= "?$query"; }
 
   $ch = curl_init();

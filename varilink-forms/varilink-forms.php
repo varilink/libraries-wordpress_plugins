@@ -34,6 +34,44 @@ add_action('init', function () {
 
 });
 
+function vari_transaction( $atts ) {
+
+    $atts = shortcode_atts( [
+        'action' => NULL
+    ], $atts );
+
+    $input_tag = '<input type="hidden" name="transaction"';
+
+    if ( array_key_exists( 'transaction', $_GET ) ) {
+
+        # We have been passed a transaction id as a query parameter. Test if it
+        # is the transaction id for this instance of a transaction input tag.
+
+        $transaction = $_GET[ 'transaction' ];
+
+        if ( isset( $atts[ 'action' ] ) ) {
+            $action = $atts[ 'action' ];
+            if ( substr( $transaction, 0, strlen( $action ) ) === $action ) {
+                $input_tag .= " value=\"$transaction\"";
+            } 
+        } else {
+            $input_tag .= " value=\"$transaction\"";
+        }
+
+    }
+
+    $input_tag .= '>';
+
+    return $input_tag;
+
+}
+
+add_action('init', function () {
+
+    add_shortcode('vari-transaction', 'vari_transaction');
+
+});
+
 function vari_input_tag ($atts) {
 
     // Output an input tag/
@@ -47,7 +85,6 @@ function vari_input_tag ($atts) {
         'placeholder' => NULL,
         'value' => NULL,
         'checked' => NULL, # used only when type is radio or checkbox
-        'last' => NULL     # used only when type is radio
     ], $atts);
 
     $input_tag = '<input';
@@ -66,50 +103,44 @@ function vari_input_tag ($atts) {
 
     $class_attr_written = FALSE; // We have not yet written a class attribute.
 
-    if ( $atts['name'] ) {
+    if ( isset( $atts[ 'name' ] ) ) {
 
-        // The input tag is named so look for values passed via the session.
+        $name = $atts[ 'name' ];
 
-        $name = $atts['name'];
+        if ( array_key_exists( 'transaction', $_GET ) ) {
 
-        if ( session_status() === PHP_SESSION_ACTIVE ) {
+            $transaction = $_GET[ 'transaction' ]; # transaction id
+            $params = $_SESSION[ $transaction ]; # transaction params
 
-            if ( array_key_exists( $name, $_SESSION ) ) {
+            if ( array_key_exists( $name, $params ) ) {
 
-                // There is a session variable with the same name as this input
-                // tag, use its value as the value for this input field.
-
+                $value = $params[ $name ];
+    
                 if (
-                    $atts['type'] === 'radio' &&
-                    $atts['value'] === $_SESSION[$name]
+                    $atts['type'] === 'radio' && $atts['value'] === $value
                 ) {
                     $input_tag .= ' checked';
-                    if ( isset( $atts['last'] ) ) {
-                        unset( $_SESSION[ $name ] );
-                    }
-                } else {
-                    $input_tag .= " value=\"{$_SESSION[$name]}\"";
-                    unset( $_SESSION[ $name ] );
-                }
-
-            } else {
-
-                if ( $atts['type'] === 'radio' && isset( $atts['checked'] ) ) {
+                } elseif ( $atts['type'] === 'checkbox' && $value === 'on' ) {
                     $input_tag .= ' checked';
+                } else {
+                    $input_tag .= " value=\"$value\"";
                 }
 
             }
 
-            if ( array_key_exists( "{$name}_class", $_SESSION ) ) {
-                $class = $_SESSION["{$name}_class"];
-                if ( isset( $atts['class' ] ) ) {
+            if ( array_key_exists( "{$name}_class", $params ) ) {
+
+                $class = $params[ "{$name}_class" ];
+                if ( isset( $atts[ 'class' ] ) ) {
                     $class .= " {$atts['class']}";
                 }
                 $input_tag .= " class=\"$class\"";
                 $class_attr_written = TRUE;
-                unset( $_SESSION[ "{$name}_class" ] );
+
             }
 
+        } elseif ( $atts['type'] === 'radio' && isset( $atts['checked'] ) ) {
+            $input_tag .= ' checked';
         }
 
     }
@@ -150,17 +181,21 @@ function vari_label_tag ( $atts ) {
     }
     $label_tag .= '>';
 
-    if ( $atts[ 'name' ] ) {
+    if ( isset( $atts[ 'name' ] ) ) {
 
         $name = $atts[ 'name' ];
 
-        if (
-            session_status() === PHP_SESSION_ACTIVE
-            && array_key_exists( $name, $_SESSION )
-        ) {
-            $label_tag .= $_SESSION[ $name ];
-            unset( $_SESSION[ $name ] );
+        if ( array_key_exists( 'transaction', $_GET ) ) {
+
+            $transaction = $_GET[ 'transaction' ]; # transaction id
+            $params = $_SESSION[ $transaction ]; # transaction params
+
+            if ( array_key_exists( $name, $params ) ) {
+                $label_tag .= $params[ $name ];
+            }
+
         }
+
     }
 
     $label_tag .= '</label>';
