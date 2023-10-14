@@ -83,77 +83,54 @@ function varilink_paypal_create_order (
 
 }
 
-function varilink_verify_webhook_signature (
-  $api_domain , $access_token , $headers , $notification , $webhook_id
+function varilink_paypal_verify_webhook_signature(
+    $api_domain, $access_token, $webhook_id
 ) {
 
-  if ( function_exists ( 'varilink_write_log' ) ) {
-      varilink_write_log ( 'Verifying webhook signature' ) ;
-      varilink_write_log ( 'Headers received:' ) ;
-  }
+    // Get the request headers and body, which contains the notification.
+    $headers = getallheaders();
+    $notification = json_decode( file_get_contents( 'php://input' ) );
 
-  foreach ( $headers as $name => $value ) {
+    // Test the webhook signature.
+    $ch = curl_init();
+    curl_setopt(
+        $ch, CURLOPT_URL,
+        "$api_domain/v1/notifications/verify-webhook-signature"
+    );
+    curl_setopt( $ch, CURLOPT_POST, TRUE);
+    curl_setopt( $ch, CURLOPT_RETURNTRANSFER, TRUE);
+    curl_setopt(
+        $ch, CURLOPT_HTTPHEADER,
+        [
+            "Authorization: Bearer $access_token", 'Accept: application/json',
+            'Content-Type: application/json'
+        ]
+    );
+    $request = [
+        'auth_algo' => $headers['PAYPAL-AUTH-ALGO'],
+        'cert_url' => $headers['PAYPAL-CERT-URL'],
+        'transmission_id' => $headers['PAYPAL-TRANSMISSION-ID'],
+        'transmission_sig' => $headers['PAYPAL-TRANSMISSION-SIG'],
+        'transmission_time' => $headers['PAYPAL-TRANSMISSION-TIME'],
+        'webhook_id' => "$webhook_id",
+        'webhook_event' => $notification
+    ];
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode( $request ) );
+    $body = curl_exec( $ch );
 
-    if ( function_exists ( 'varilink_write_log' ) ) {
-      varilink_write_log ( "$name: $value" ) ;
+    // Check the result of testing the webhook signature.
+    $rc = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
+    if ( $rc === 200 ) {
+        $response = json_decode( $body );
+        $response->verification_status === 'SUCCESS'
+            ? $verification_status = TRUE
+            : $verification_status = FALSE;
+    } else {
+        $verification_status = FALSE;
     }
 
-    if ( $name === 'Paypal-Auth-Algo' ) {
-      $auth_algo = $value ;
-    } else if ( $name === 'Paypal-Cert-Url' ) {
-      $cert_url = $value ;
-    } else if ( $name === 'Paypal-Transmission-Id' ) {
-      $transmission_id = $value ;
-    } else if ( $name === 'Paypal-Transmission-Sig' ) {
-      $transmission_sig = $value ;
-    } else if ( $name === 'Paypal-Transmission-Time' ) {
-      $transmission_time = $value ;
-    }
-
-  }
-
-  // Verify the webhook signature
-  $ch = curl_init ( ) ;
-  curl_setopt ( $ch , CURLOPT_URL , "$api_domain/v1/notifications/verify-webhook-signature" ) ;
-  curl_setopt ( $ch , CURLOPT_POST , TRUE ) ;
-  curl_setopt ( $ch , CURLOPT_RETURNTRANSFER , TRUE ) ;
-  curl_setopt ( $ch , CURLOPT_HTTPHEADER , array ( "Authorization: Bearer $access_token" , 'Accept: application/json' , 'Content-Type: application/json' ) ) ;
-  $request = [
-    'auth_algo' => "$auth_algo" ,
-    'cert_url' => "$cert_url" ,
-    'transmission_id' => "$transmission_id" ,
-    'transmission_sig' => "$transmission_sig" ,
-    'transmission_time' => "$transmission_time" ,
-    'webhook_id' => "$webhook_id" ,
-    'webhook_event' => $notification
-  ] ;
-  curl_setopt ( $ch , CURLOPT_POSTFIELDS , json_encode ( $request ) ) ;
-  $body = curl_exec ( $ch ) ;
-  $rc = curl_getinfo ( $ch , CURLINFO_HTTP_CODE ) ;
-  if ( $rc === 200 ) {
-    $response = json_decode ( $body ) ;
-    if ( function_exists ( 'varilink_write_log' ) ) {
-      varilink_write_log ( 'Webhook notification RC=200, body received:' ) ;
-      ob_start ( ) ;
-      var_dump ( $response ) ;
-      varilink_write_log ( ob_get_clean ( ) ) ;
-    }
-    $response -> verification_status === 'SUCCESS'
-      ? $verification_status = TRUE
-      : $verification_status = FALSE ;
-  } else {
-    if ( function_exists ( 'varilink_write_log' ) ) {
-      varilink_write_log ( 'Webhook notification verification failed' ) ;
-      varilink_write_log ( "Return code received=$rc" ) ;
-      varilink_write_log ( 'Response body:' ) ;
-      ob_start ( ) ;
-      var_dump ( $body ) ;
-      varilink_write_log ( ob_get_clean ( ) ) ;
-    }
-    $verification_status = FALSE ;
-  }
-  curl_close ( $ch ) ;
-
-  return $verification_status ;
+    // Tidy up and leave.
+    curl_close( $ch );
+    return $verification_status;
 
 }
