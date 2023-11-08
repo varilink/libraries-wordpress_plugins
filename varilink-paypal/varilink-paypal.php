@@ -27,17 +27,10 @@ function varilink_paypal_get_access_token (
   curl_setopt ( $ch , CURLOPT_POSTFIELDS , 'grant_type=client_credentials' ) ;
   $body = curl_exec ( $ch ) ;
   $rc = curl_getinfo ( $ch , CURLINFO_HTTP_CODE ) ;
-  if ( $rc == 200 ) {
-    $content = json_decode ( $body ) ;
-    $access_token = $content -> access_token ;
-  } else {
-    $message  = "Error response from API call:\r\n" ;
-    $message .= "RC=$rc\r\n" ;
-    exit ( $message ) ;
-  }
+  $data = json_decode ( $body ) ;
   curl_close ( $ch ) ;
 
-  return $access_token ;
+  return (object) [ 'rc' => $rc, 'data' => $data ] ;
 
 }
 
@@ -52,7 +45,10 @@ function varilink_paypal_capture_payment (
   curl_setopt ( $ch , CURLOPT_HTTPHEADER , array ( "Authorization: Bearer $access_token" , 'Content-Type: application/json' ) ) ;
   $body = curl_exec ( $ch ) ;
   $rc = curl_getinfo ( $ch , CURLINFO_HTTP_CODE ) ;
+  $data = json_decode ( $body ) ;
   curl_close ( $ch ) ;
+
+  return (object) [ 'rc' => $rc, 'data' => $data ] ;
 
 }
 
@@ -69,17 +65,10 @@ function varilink_paypal_create_order (
   curl_setopt ( $ch , CURLOPT_POSTFIELDS , $json ) ;
   $body = curl_exec ( $ch ) ;
   $rc = curl_getinfo ( $ch , CURLINFO_HTTP_CODE ) ;
-  if ( $rc == 201 ) {
-    $response = json_decode ( $body ) ;
-  } else {
-    $message  = "Error response from API call:\r\n" ;
-    $message .= "RC=$rc\r\n" ;
-    $message .= "JSON=$json\r\n" ;
-    exit ( $message ) ;
-  }
+  $data = json_decode ( $body ) ;
   curl_close ( $ch ) ;
 
-  return $response ;
+  return (object) [ 'rc' => $rc, 'data' => $data ] ;
 
 }
 
@@ -119,17 +108,8 @@ function varilink_paypal_verify_webhook_signature(
 
     // Check the result of testing the webhook signature.
     $rc = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
-    if ( $rc === 200 ) {
-        $response = json_decode( $body );
-        $response->verification_status === 'SUCCESS'
-            ? $verification_status = TRUE
-            : $verification_status = FALSE;
-    } else {
-        $verification_status = FALSE;
-    }
-
-    // Tidy up and leave.
+    $data = json_decode ( $body ) ;
     curl_close( $ch );
-    return $verification_status;
+    return (object) [ 'rc' => $rc, 'data' => $data ] ;
 
 }
