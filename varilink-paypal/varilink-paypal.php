@@ -84,12 +84,11 @@ function varilink_paypal_create_order (
 }
 
 function varilink_paypal_verify_webhook_signature(
-    $api_domain, $access_token, $webhook_id
+    $api_domain, $access_token, $webhook_id, $notification
 ) {
 
     // Get the request headers and body, which contains the notification.
     $headers = getallheaders();
-    $notification = json_decode( file_get_contents( 'php://input' ) );
 
     // Test the webhook signature.
     $ch = curl_init();
