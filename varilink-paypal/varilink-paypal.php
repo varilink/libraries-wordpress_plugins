@@ -14,10 +14,6 @@ function varilink_paypal_get_access_token (
   $api_domain , $app_client_id , $app_secret
 ) {
 
-  if ( function_exists ( 'varilink_write_log' ) ) {
-    varilink_write_log ( 'function varilink_paypal_get_access_token called' ) ;
-  }
-
   $ch = curl_init ( ) ;
   curl_setopt ( $ch , CURLOPT_URL , "$api_domain/v1/oauth2/token" ) ;
   curl_setopt ( $ch , CURLOPT_POST , TRUE ) ;
