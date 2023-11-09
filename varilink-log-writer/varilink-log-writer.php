@@ -28,6 +28,8 @@ function varilink_write_log (
         $output = "$prefix: $output";
     }
 
-    error_log ( $output );
+    file_put_contents (
+        ABSPATH . '/../varilink.log', "$output\n", FILE_APPEND
+    );
 
 }
