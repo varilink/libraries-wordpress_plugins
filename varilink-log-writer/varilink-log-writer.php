@@ -12,8 +12,8 @@ defined ( 'ABSPATH' ) or die ( 'Access Denied' ) ;
 
 // Create varilink_write_log function for convenient output to the debug log
 function varilink_write_log (
-    $input,        # What it is that we're being asked to write to the log.
-    $prefix = NULL # An optional prefix to be applied to the output if provided.
+    $input,          # What to write to the log
+    $divider = FALSE # Whether to output a divider before writing the output
 ) {
 
     if ( is_array($input) || is_object($input) ) {
@@ -23,9 +23,12 @@ function varilink_write_log (
         $output = $input;
     }
 
-    if ( isset( $prefix ) ) {
-        // A prefix has been provided for the log output.
-        $output = "$prefix: $output";
+    if ( $divider ) {
+        file_put_contents (
+            ABSPATH . '/../varilink.log',
+            str_repeat( '-', 80 ) . "\n",
+            FILE_APPEND
+        );
     }
 
     file_put_contents (
