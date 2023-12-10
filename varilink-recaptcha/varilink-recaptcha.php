@@ -42,7 +42,7 @@ function vl_recaptcha_verify_user_response ( $secret ) {
 
     $query = http_build_query( [
         'secret' => VL_RECAPTCHA_SECRET_KEY,
-        'response' => $_POST[ 'g_recaptcha_response' ],
+        'response' => $_POST[ 'g-recaptcha-response' ],
         'remoteip' => $remoteip
     ] );
 
@@ -55,14 +55,9 @@ function vl_recaptcha_verify_user_response ( $secret ) {
     curl_setopt( $ch, CURLOPT_RETURNTRANSFER, TRUE );
 
     $body = curl_exec( $ch );
-    $rc = curl_get_info( $ch, CURLINFO_HTTP_CODE );
+    $rc = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
+    curl_close( $ch );
 
-    if ( $rc === 200 ) {
-        return json_decode( $body, TRUE );
-    } else {
-        return $rc; 
-    }
-
-    $curl_close( $ch );
+    return [ 'rc' => $rc, 'body' => json_decode( $body, TRUE ) ];
 
 }
