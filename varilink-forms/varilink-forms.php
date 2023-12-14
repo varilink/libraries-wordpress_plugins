@@ -74,25 +74,33 @@ add_action('init', function () {
 
 function vari_input_tag ($atts) {
 
-    // Output an input tag/
+    // This shortocde function outputs an input tag by combining what is passed
+    // as shortcode attributes with anything stored from the previous steps in
+    // the transaction if one has already been created. The transaction can hold
+    // values or validation errors for the input tag, which are stored as class
+    // names.
 
-    // Valid shortcode attributes and their default values.
-    $atts = shortcode_atts([
+    // Register the valid shortcode attributes and their default values.
+    $atts = shortcode_atts( [
+        'checked' => NULL, # used only when type is radio or checkbox
+        'class' => NULL,
+        'copy' => NULL, # does not correspond to a HTML attribute - see below 
         'id' => NULL,
         'name' => NULL,
-        'type' => 'text',
-        'class' => NULL,
         'placeholder' => NULL,
+        'type' => 'text',
         'value' => NULL,
-        'checked' => NULL, # used only when type is radio or checkbox
     ], $atts);
 
+    // Start the input tag.
     $input_tag = '<input';
 
     foreach ( [ 'id', 'name', 'type', 'placeholder', 'value' ] as $var ) {
 
-        // Note the omission of the class attribute. This is so that we can
-        // merge classes set by validation with the initial tag classes.
+        // If these shortcode attributes are set then they always map directly
+        // to the value of an input tag attribute value in the HTML that we
+        // output. They are never affected by what's stored in the transaction.
+        // Thus we can use them immediately in the output HTML.
 
         if ( isset( $atts[$var] ) ) {
             $$var = $atts[$var];
@@ -105,30 +113,76 @@ function vari_input_tag ($atts) {
 
     if ( isset( $atts[ 'name' ] ) ) {
 
-        $name = $atts[ 'name' ];
+        // The input is named, which means that it will be included in form
+        // submission. Hence there may be information stored about it in the
+        // transaction, if one has already been created.
+
+        $name = $atts[ 'name' ]; # convenience variable
 
         if ( array_key_exists( 'transaction', $_GET ) ) {
 
+            // We have a transaction in process so it's possible that this input
+            // may have a value stored in the transation that we need to restore
+            // from.
+
+            // Create a couple of convenience, transaction related variables.
             $transaction = $_GET[ 'transaction' ]; # transaction id
             $params = $_SESSION[ $transaction ]; # transaction params
 
             if ( array_key_exists( $name, $params ) ) {
 
-                $value = $params[ $name ];
-    
+                // The transaction contains a parameter with the same name as
+                // this input. When that is the case that parameter contains the
+                // value that has previously been assinged to this input and so
+                // must be restored to this input.
+
+                $value = $params[ $name ]; # convenience variable
+
                 if (
-                    $atts['type'] === 'radio' && $atts['value'] === $value
+                    $atts[ 'type' ] === 'radio' && $atts[ 'value' ] === $value
                 ) {
+
+                    // This input is a radio button that the transaction's
+                    // stored value for the input matches, so set the button to
+                    // checked.
                     $input_tag .= ' checked';
-                } elseif ( $atts['type'] === 'checkbox' && $value === 'on' ) {
+
+                } elseif ( $atts[ 'type' ] === 'checkbox' && $value === 'on' ) {
+
+                    // This input is a checkbox for which the transaction's
+                    // stored value is "on", so set the checkbox to checked.
                     $input_tag .= ' checked';
+
                 } else {
+
+                    // The transaction has the value to restore for an input
+                    // that is neither a radio button nor a checkbox, so simply
+                    // set the value of this input to the stored value.
                     $input_tag .= " value=\"$value\"";
+
+                }
+
+            } else {
+
+                if (
+                    isset( $atts[ 'copy' ] ) &&
+                    array_key_exists( $atts[ 'copy' ], $params )
+                ) {
+
+                    $value = $params[ $atts[ 'copy' ] ];
+                    $input_tag .= " value=\"$value\"";
+
                 }
 
             }
 
             if ( array_key_exists( "{$name}_class", $params ) ) {
+
+                // The transaction holds value(s) for the class attribute of
+                // this input. These usually serve to highlight the displayed
+                // attribute, indicating that it has failed validation. Merge
+                // this/these classes with the ones provided via the shortcode
+                // attribute if there are any.
 
                 $class = $params[ "{$name}_class" ];
                 if ( isset( $atts[ 'class' ] ) ) {
@@ -139,8 +193,20 @@ function vari_input_tag ($atts) {
 
             }
 
-        } elseif ( $atts['type'] === 'radio' && isset( $atts['checked'] ) ) {
-            $input_tag .= ' checked';
+        } else {
+
+            // There is no stored transaction yet.
+
+            if ( $atts['type'] === 'radio' && isset( $atts['checked'] ) ) {
+
+                // This is a radio button that the shortcode attributes say
+                // should be checked by default. Since there is no transaction
+                // with a stored value to tell us otherwise, set it to checked.
+
+                $input_tag .= ' checked';
+
+            }
+
         }
 
     }
